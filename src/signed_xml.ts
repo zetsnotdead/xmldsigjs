@@ -119,7 +119,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
 
         signedInfo = this.XmlSignature.SignedInfo;
 
-        await this.DigestReferences(data.documentElement);
+        await this.DigestReferences(data.documentElement, data);
 
         // Add signature method
         signedInfo.SignatureMethod.Algorithm = alg.namespaceURI;
@@ -268,7 +268,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
         }
     }
 
-    protected async DigestReference(doc: Element, reference: Reference, checkHmac: boolean) {
+    protected async DigestReference(doc: Element, reference: Reference, checkHmac: boolean, data?: Document) {
         if (reference.Uri) {
             let objectName: string | undefined;
             if (!reference.Uri.indexOf("#xpointer")) {
@@ -334,7 +334,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
 
         let canonOutput: any = null;
         if (reference.Transforms && reference.Transforms.Count) {
-            canonOutput = this.ApplyTransforms(reference.Transforms, doc);
+            canonOutput = this.ApplyTransforms(reference.Transforms, doc, data);
         } else {
             // we must not C14N references from outside the document
             // e.g. non-xml documents
@@ -358,7 +358,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
         return digest.Digest(canonOutput);
     }
 
-    protected async DigestReferences(data: Element) {
+    protected async DigestReferences(data: Element, doc: Document) {
         // we must tell each reference which hash algorithm to use
         // before asking for the SignedInfo XML !
         for (const ref of this.XmlSignature.SignedInfo.References.GetIterator()) {
@@ -366,7 +366,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
             if (!ref.DigestMethod.Algorithm) {
                 ref.DigestMethod.Algorithm = new Alg.Sha256().namespaceURI;
             }
-            const hash = await this.DigestReference(data, ref, false);
+            const hash = await this.DigestReference(data, ref, false, doc);
             ref.DigestValue = hash;
         }
     }
@@ -439,7 +439,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
         }
     }
 
-    protected ApplyTransforms(transforms: XmlTransforms, input: Element): any {
+    protected ApplyTransforms(transforms: XmlTransforms, input: Element, doc?: Document): any {
         let output: any = null;
 
         transforms.Sort((a, b) => {
@@ -463,7 +463,7 @@ export class SignedXml implements XmlCore.IXmlSerializable {
         // Apply C14N transform if Reference has only one transform EnvelopedSignature
         if (transforms.Count === 1 && transforms.Item(0) instanceof Transforms.XmlDsigEnvelopedSignatureTransform) {
             const c14n = new Transforms.XmlDsigC14NTransform();
-            c14n.LoadInnerXml(input);
+            c14n.LoadInnerXml(doc ? doc : input);
             output = c14n.GetOutput();
         }
 

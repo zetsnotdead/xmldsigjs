@@ -35,21 +35,7 @@ export class XmlCanonicalizer {
         if (!node) {
             throw new XmlCore.XmlError(XmlCore.XE.CRYPTOGRAPHIC, "Parameter 1 is not Node");
         }
-        let node2: Node;
-        if (node.nodeType === XmlCore.XmlNodeType.Document) {
-            this.document = node as Document;
-            node2 = this.document.documentElement;
-        } else {
-            if (!node.ownerDocument) {
-                throw new Error("Cannot get owner document");
-            }
-            this.document = node.ownerDocument;
-            node2 = node;
-        }
-        // get nss from document
-        // this.nsManager = new XmlNamespaceManager(this.document);
-
-        this.WriteNode(node2);
+        this.WriteNode(node);
 
         const res = this.result.join("");
         return res;
@@ -158,7 +144,7 @@ export class XmlCanonicalizer {
             this.result.push("<?");
         }
 
-        this.result.push(node.nodeName);
+        this.result.push(node.nodeName || (node as any).tagName);
         if (node.nodeValue) {
             this.result.push(" ");
             this.result.push(this.NormalizeString(node.nodeValue, XmlCore.XmlNodeType.ProcessingInstruction));
